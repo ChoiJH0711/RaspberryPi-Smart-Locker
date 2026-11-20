@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}락커 선택 | Smart Locker{% endblock %}
+
+{% block content %}
+<section class="dashboard-shell">
+  <div class="dashboard-heading">
+    <div>
+      <p class="eyebrow">LOCKER STATUS</p>
+      <h1>사용할 락커를 선택하세요</h1>
+      <p>두 락커의 현재 이용 상태를 확인하고 원하는 락커를 선택하세요.</p>
+    </div>
+    <div class="legend" aria-label="상태 안내">
+      <span><i class="dot dot-available"></i>사용 가능</span>
+      <span><i class="dot dot-busy"></i>사용 중</span>
+    </div>
+  </div>
+
+  {% if lockers %}
+    <div class="locker-grid">
+    {% for locker in lockers %}
+      {% set mine = locker.user_id == current_user.id %}
+      {% set available = locker.user_id is none and locker.status == 'available' %}
+      <article class="locker-card {% if mine %}locker-mine{% elif not available %}locker-busy{% endif %}">
+        <div class="locker-card-top">
+          <span class="locker-number">{{ "%02d"|format(locker.locker_number) }}</span>
+          {% if available %}
+            <span class="status-pill available"><i></i>사용 가능</span>
+          {% else %}
+            <span class="status-pill busy"><i></i>사용 중</span>
+          {% endif %}
+        </div>
+
+        <div class="locker-icon {% if available %}available{% else %}busy{% endif %}" aria-hidden="true">
+          <span class="locker-door"></span>
+          <span class="locker-handle"></span>
+        </div>
+
+        {% if mine %}
+          <div class="my-locker-label">현재 내가 사용 중입니다</div>
+          <form method="post" action="{{ url_for('toggle_locker', locker_id=locker.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="toggle-button {% if locker.status == 'locked' %}is-locked{% else %}is-open{% endif %}" type="submit">
+              <span class="toggle-track"><span class="toggle-knob"></span></span>
+              <span class="toggle-copy">
+                <strong>{% if locker.status == 'locked' %}잠금 상태{% else %}잠금 해제{% endif %}</strong>
+                <small>{% if locker.status == 'locked' %}눌러서 열기{% else %}눌러서 잠그기{% endif %}</small>
+              </span>
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('release_locker', locker_id=locker.id) }}" onsubmit="return confirm('락커를 열고 사용을 종료할까요?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="release-button" type="submit">사용 종료</button>
+          </form>
+        {% elif available %}
+          {% if owned_locker %}
+            <button class="disabled-button" type="button" disabled>이미 다른 락커를 사용 중입니다</button>
+          {% else %}
+            <form method="post" action="{{ url_for('select_locker', locker_id=locker.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="select-button" type="submit">이 락커 사용하기</button>
+            </form>
+          {% endif %}
+        {% else %}
+          <button class="disabled-button" type="button" disabled>다른 사용자가 이용 중입니다</button>
+        {% endif %}
+      </article>
+    {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <strong>락커 정보가 없습니다.</strong>
+      <p>서버를 다시 시작하거나 MySQL의 lockers 테이블을 확인해주세요.</p>
+    </div>
+  {% endif %}
+
+  <div class="notice-card">
+    <span aria-hidden="true">!</span>
+    <p><strong>이용 안내</strong> 잠금 해제 시 LED가 초록색으로, 잠금 시 빨간색으로 바뀝니다. 사용이 끝나면 반드시 ‘사용 종료’를 눌러주세요.</p>
+  </div>
+</section>
+{% endblock %}
